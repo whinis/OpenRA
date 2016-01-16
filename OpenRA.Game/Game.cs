@@ -180,6 +180,7 @@ namespace OpenRA
 		{
 			var replay = OrderManager.Connection as ReplayConnection;
 			var replayName = replay != null ? replay.Filename : null;
+			var uid = OrderManager.World.Map.Uid;
 			var lobbyInfo = OrderManager.LobbyInfo;
 			var orders = new[] {
 					Order.Command("sync_lobby {0}".F(lobbyInfo.Serialize())),
@@ -193,11 +194,32 @@ namespace OpenRA
 			// Restart the game with the same replay/mission
 			if (replay != null)
 				JoinReplay(replayName);
+			else if (mission)
+				StartMission(uid, globalSettings.GameSpeedType, globalSettings.Difficulty);
 			else
 				CreateAndStartLocalServer(lobbyInfo.GlobalSettings.Map, orders);
 		}
 
 		public static void CreateAndStartLocalServer(string mapUID, IEnumerable<Order> setupOrders, Action onStart = null)
+		{
+			OrderManager om = null;
+
+			Action lobbyReady = null;
+			lobbyReady = () =>
+			{
+				JoinServer(IPAddress.Loopback.ToString(), CreateLocalServer(map), "");
+				LobbyInfoChanged += WidgetUtils.Once(() =>
+				{
+					OrderManager.IssueOrder(Order.Command("sync_lobby {0}".F(lobbyInfo.Serialize())));
+					RunAfterTick(() =>
+				   {
+					   OrderManager.IssueOrder(Order.Command("startgame"));
+				   });
+				});
+			}
+		}
+
+		public static void StartMission(string mapUID, string gameSpeed, string difficulty, Action onStart = null)
 		{
 			OrderManager om = null;
 
