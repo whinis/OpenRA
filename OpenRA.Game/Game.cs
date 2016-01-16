@@ -204,16 +204,17 @@ namespace OpenRA
 			Action lobbyReady = null;
 			lobbyReady = () =>
 			{
-				LobbyInfoChanged -= lobbyReady;
-				foreach (var o in setupOrders)
-					om.IssueOrder(o);
+				LobbyInfoChanged += WidgetUtils.Once(() =>
+				{
+					OrderManager.IssueOrder(Order.Command("sync_lobby {0}".F(lobbyInfo.Serialize())));
+					RunAfterTick(() =>
+					{
+						OrderManager.IssueOrder(Order.Command("startgame"));
+					});
+				});
 
-				if (onStart != null)
-					onStart();
-			};
-			LobbyInfoChanged += lobbyReady;
-
-			om = JoinServer(IPAddress.Loopback.ToString(), CreateLocalServer(mapUID), "");
+				JoinServer(IPAddress.Loopback.ToString(), CreateLocalServer(OrderManager.LobbyInfo.GlobalSettings.Map), "");
+			}
 		}
 
 		public static bool IsHost

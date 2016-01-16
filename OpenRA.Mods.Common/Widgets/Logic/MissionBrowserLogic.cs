@@ -13,11 +13,13 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Threading;
 using OpenRA.Graphics;
 using OpenRA.Network;
 using OpenRA.Primitives;
 using OpenRA.Widgets;
+
 
 namespace OpenRA.Mods.Common.Widgets.Logic
 {
@@ -324,6 +326,24 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			else
 				Game.CreateAndStartLocalServer(selectedMapPreview.Uid, orders, onStart);
 		}
+
+class DropDownOption
+		{
+			OrderManager om = null;
+
+			Action lobbyReady = null;
+			lobbyReady = () =>
+			{
+				om.IssueOrder(Order.Command("gamespeed {0}".F(gameSpeed)));
+				om.IssueOrder(Order.Command("difficulty {0}".F(difficulty)));
+				Game.LobbyInfoChanged -= lobbyReady;
+				onStart();
+				om.IssueOrder(Order.Command("state {0}".F(Session.ClientState.Ready)));
+			};
+			Game.LobbyInfoChanged += lobbyReady;
+
+			om = Game.JoinServer(IPAddress.Loopback.ToString(), Game.CreateLocalServer(selectedMapPreview.Uid), "");
+ 		}
 
 class DropDownOption
 		{
