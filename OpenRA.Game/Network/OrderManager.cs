@@ -184,15 +184,21 @@ namespace OpenRA.Network
 			++NetFrameNumber;
 		}
 
-		public void Dispose()
+		public void Dispose(bool persistConnection)
 		{
 			disposed = true;
-			if (Connection != null)
+			if (Connection != null && persistConnection == false)
 				Connection.Dispose();
+		}
+
+		public void Dispose()
+		{
+			Dispose(false);
 		}
 	}
 
-	public class ChatLine
+
+		public class ChatLine
 	{
 		public readonly Color Color;
 		public readonly string Name;

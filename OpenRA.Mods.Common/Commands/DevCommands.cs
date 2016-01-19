@@ -48,6 +48,7 @@ namespace OpenRA.Mods.Common.Commands
 			register("all", "toggles all cheats and gives you some cash for your trouble.");
 			register("crash", "crashes the game.");
 			register("levelup", "adds a specified number of levels to the selected actors.");
+			register("restart", "restarts the match");
 		}
 
 		public void InvokeCommand(string name, string arg)
@@ -117,6 +118,11 @@ namespace OpenRA.Mods.Common.Commands
 							world.IssueOrder(leveluporder);
 					}
 
+					break;
+
+				case "restart":
+					var restartorder = new Order("Restart", null, false) { IsImmediate = true, TargetString =""};
+					world.IssueOrder(restartorder);
 					break;
 			}
 		}

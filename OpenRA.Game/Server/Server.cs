@@ -518,6 +518,9 @@ namespace OpenRA.Server
 				case "HandshakeResponse":
 					ValidateClient(conn, so.Data);
 					break;
+				case "Restart":
+					Restart(conn);
+					break;
 				case "Chat":
 				case "TeamChat":
 				case "PauseGame":
@@ -732,5 +735,14 @@ namespace OpenRA.Server
 				gameTimeout.Enabled = true;
 			}
 		}
-	}
+		public void Restart(Connection conn)
+		{
+			DispatchOrdersToClients(null, 0, new ServerOrder("Restart", LobbyInfo.Serialize()).Serialize());
+			Game.RunAfterDelay(300, () =>
+			 {
+				 DispatchOrders(null, 0, new ServerOrder("SyncInfo", LobbyInfo.Serialize()).Serialize());
+			 });
+			Game.RunAfterDelay(500, StartGame);
+		}
+    }
 }

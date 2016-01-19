@@ -272,6 +272,15 @@ namespace OpenRA.Network
 						break;
 					}
 
+				case "Restart":
+					if (order.TargetString == "")
+						break;
+					Game.RestartGame();
+					orderManager.LobbyInfo = Session.Deserialize(order.TargetString);
+					SetOrderLag(orderManager);
+					Game.SyncLobbyInfo();
+					break;
+
 				default:
 					{
 						if (!order.IsImmediate)
