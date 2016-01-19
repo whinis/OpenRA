@@ -196,7 +196,7 @@ namespace OpenRA
 				JoinReplay(replayName);
 			else if (mission)
 				StartMission(uid, globalSettings.GameSpeedType, globalSettings.Difficulty);
-			else
+			else if (lobbyInfo.IsSinglePlayer)
 				CreateAndStartLocalServer(lobbyInfo.GlobalSettings.Map, orders);
 		}
 
@@ -216,6 +216,13 @@ namespace OpenRA
 					   OrderManager.IssueOrder(Order.Command("startgame"));
 				   });
 				});
+			}else
+			{
+				var connection = OrderManager.Connection as NetworkConnection;
+				connection.EndRecording();
+				var om = new OrderManager(OrderManager.Host, OrderManager.Port, OrderManager.Password, connection);
+				JoinInner(om);
+
 			}
 		}
 

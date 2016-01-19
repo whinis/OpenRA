@@ -116,6 +116,13 @@ namespace OpenRA.Network
 			Recorder = new ReplayRecorder(chooseFilename);
 		}
 
+		public void EndRecording()
+		{
+			if (Recorder != null)
+				Recorder.Dispose();
+			Recorder = null;
+		}
+
 		protected virtual void Dispose(bool disposing)
 		{
 			if (disposing && Recorder != null)
