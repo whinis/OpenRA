@@ -273,12 +273,18 @@ namespace OpenRA.Network
 					}
 
 				case "Restart":
-					if (order.TargetString == "")
-						break;
 					Game.RestartGame();
-					orderManager.LobbyInfo = Session.Deserialize(order.TargetString);
-					SetOrderLag(orderManager);
-					Game.SyncLobbyInfo();
+					break;
+
+				case "Reconnect":
+					var port = 0;
+					if (int.TryParse(order.TargetString, out port))
+					{
+						Game.Disconnect();
+						Game.RunAfterTick(() => { Game.JoinServer(orderManager.Host, port, orderManager.Password); });
+					}
+					else
+						Game.Debug("Invalid Port Response");
 					break;
 
 				default:

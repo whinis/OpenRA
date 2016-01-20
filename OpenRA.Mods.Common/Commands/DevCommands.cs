@@ -49,6 +49,7 @@ namespace OpenRA.Mods.Common.Commands
 			register("crash", "crashes the game.");
 			register("levelup", "adds a specified number of levels to the selected actors.");
 			register("restart", "restarts the match");
+			register("lobbyreturn", "returns everyone to lobby");
 		}
 
 		public void InvokeCommand(string name, string arg)
@@ -121,8 +122,12 @@ namespace OpenRA.Mods.Common.Commands
 					break;
 
 				case "restart":
-					var restartorder = new Order("Restart", null, false) { IsImmediate = true, TargetString =""};
+					var restartorder = new Order("RequestRestart", null, false) { IsImmediate = true, TargetString =""};
 					world.IssueOrder(restartorder);
+					break;
+				case "lobbyreturn":
+					var lobbyorder = new Order("LobbyReturn", null, false) { IsImmediate = true, TargetString = "" };
+					world.IssueOrder(lobbyorder);
 					break;
 			}
 		}

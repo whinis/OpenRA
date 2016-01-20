@@ -30,7 +30,7 @@ namespace OpenRA.Server
 	{
 		WaitingPlayers = 1,
 		GameStarted = 2,
-		ShuttingDown = 3
+        ShuttingDown = 3
 	}
 
 	public class Server
@@ -57,6 +57,7 @@ namespace OpenRA.Server
 		readonly int randomSeed;
 		readonly TcpListener listener;
 		readonly TypeDictionary serverTraits = new TypeDictionary();
+		int reconnectTimeout = 0;
 
 		XTimer gameTimeout;
 
@@ -208,6 +209,8 @@ namespace OpenRA.Server
 						if (Settings.AllowPortForward) UPnP.RemovePortforward();
 						break;
 					}
+					if(reconnectTimeout > 0)
+						reconnectTimeout--;
 				}
 
 				foreach (var t in serverTraits.WithInterface<INotifyServerShutdown>())
@@ -460,6 +463,19 @@ namespace OpenRA.Server
 
 		public void DispatchOrders(Connection conn, int frame, byte[] data)
 		{
+			var ms = new MemoryStream(data);
+			var br = new BinaryReader(ms);
+
+			try
+			{
+				while (ms.Position < ms.Length)
+				{
+					var so = ServerOrder.Deserialize(br);
+					if (so == null) return;
+				}
+			}
+			catch (EndOfStreamException) { }
+			catch (NotImplementedException) { }
 			if (frame == 0 && conn != null)
 				InterpretServerOrders(conn, data);
 			else
@@ -518,8 +534,20 @@ namespace OpenRA.Server
 				case "HandshakeResponse":
 					ValidateClient(conn, so.Data);
 					break;
-				case "Restart":
-					Restart(conn);
+				case "RequestRestart":
+					Restart();
+					break;
+				case "RestartReady":
+					var c = GetClient(conn);
+					c.State = Session.ClientState.Ready;
+					if(Conns.Where(c1 => GetClient(c1).IsReady).ToArray().Count() == Conns.Count())
+					{
+						State = ServerState.WaitingPlayers;
+						StartGame();
+					}
+                    break;
+				case "LobbyReturn":
+					LobbyReturn();
 					break;
 				case "Chat":
 				case "TeamChat":
@@ -619,7 +647,7 @@ namespace OpenRA.Server
 				if (Conns.Any() || LobbyInfo.GlobalSettings.Dedicated)
 					SyncLobbyClients();
 
-				if (!LobbyInfo.GlobalSettings.Dedicated && dropClient.IsAdmin)
+				if (!LobbyInfo.GlobalSettings.Dedicated && dropClient.IsAdmin && reconnectTimeout == 0)
 					Shutdown();
 			}
 
@@ -735,14 +763,35 @@ namespace OpenRA.Server
 				gameTimeout.Enabled = true;
 			}
 		}
-		public void Restart(Connection conn)
+
+		public void Restart()
 		{
-			DispatchOrdersToClients(null, 0, new ServerOrder("Restart", LobbyInfo.Serialize()).Serialize());
-			Game.RunAfterDelay(300, () =>
-			 {
-				 DispatchOrders(null, 0, new ServerOrder("SyncInfo", LobbyInfo.Serialize()).Serialize());
-			 });
-			Game.RunAfterDelay(500, StartGame);
+			DispatchOrdersToClients(null, 0, new ServerOrder("Restart", "").Serialize());
+			foreach(var client in LobbyInfo.Clients)
+			{
+				if(client.Bot == null)
+					client.State = Session.ClientState.NotReady;
+			}
 		}
-    }
+
+		public void LobbyReturn()
+		{
+			var Settings = LobbyInfo.GlobalSettings;
+			State = ServerState.WaitingPlayers;
+			reconnectTimeout = 1000;
+			listener.Start();
+			//DispatchOrdersToClients(null, 0, new ServerOrder("Reconnect", Port.ToString()).Serialize());
+			if (Conns.Count > 0)
+			{
+				foreach (var c in Conns.ToArray())
+				{
+					DropClient(c);
+				}
+			}
+            LobbyInfo = new Session
+			{
+				GlobalSettings = LobbyInfo.GlobalSettings
+			};
+		}
+	}
 }

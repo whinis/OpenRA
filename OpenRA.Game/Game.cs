@@ -229,11 +229,14 @@ namespace OpenRA
 			}
 			else
 			{
-				//OrderManager.World.EndGame();
+				OrderManager.World.EndGame();
 				var connection = OrderManager.Connection as NetworkConnection;
 				connection.EndRecording();
 				var om = new OrderManager(OrderManager.Host, OrderManager.Port, OrderManager.Password, connection);
 				JoinInner(om ,true);
+				connection.StartRecording(TimestampedFilename);
+				var restartready = new Order("RestartReady", null, false) { IsImmediate = true, TargetString = "" };
+				OrderManager.IssueOrder(restartready);
 			}
 		}
 
