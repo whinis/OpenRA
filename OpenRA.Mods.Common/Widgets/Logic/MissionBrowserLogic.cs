@@ -329,24 +329,6 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 
 class DropDownOption
 		{
-			OrderManager om = null;
-
-			Action lobbyReady = null;
-			lobbyReady = () =>
-			{
-				om.IssueOrder(Order.Command("gamespeed {0}".F(gameSpeed)));
-				om.IssueOrder(Order.Command("difficulty {0}".F(difficulty)));
-				Game.LobbyInfoChanged -= lobbyReady;
-				onStart();
-				om.IssueOrder(Order.Command("state {0}".F(Session.ClientState.Ready)));
-			};
-			Game.LobbyInfoChanged += lobbyReady;
-
-			om = Game.JoinServer(IPAddress.Loopback.ToString(), Game.CreateLocalServer(selectedMapPreview.Uid), "");
- 		}
-
-class DropDownOption
-		{
 			public string Title;
 			public Func<bool> IsSelected;
 			public Action OnClick;

@@ -179,6 +179,7 @@ namespace OpenRA
 		public static void RestartGame()
 		{
 			var replay = OrderManager.Connection as ReplayConnection;
+			var conn = OrderManager.Connection as EchoConnection;
 			var replayName = replay != null ? replay.Filename : null;
 			var lobbyInfo = OrderManager.LobbyInfo;
 			var orders = new[] {
@@ -188,10 +189,24 @@ namespace OpenRA
 
 			Ui.ResetAll();
 
-			singleplayer = false;
+			var singleplayer = false;
 			// Restart the game with the same replay/mission
 			if (singleplayer)
-				CreateAndStartLocalServer(lobbyInfo.GlobalSettings.Map, orders);
+			{
+				if (replay != null)
+					JoinReplay(replayName);
+				else
+					CreateAndStartLocalServer(lobbyInfo.GlobalSettings.Map, orders);
+			}
+			else
+			{
+				conn.EndRecording();
+
+				var om = new OrderManager(OrderManager.Host, OrderManager.Port, OrderManager.Password, OrderManager.Connection);
+				JoinInner(om,true);
+
+				conn.StartRecording(TimestampedFilename);
+			}
 		}
 
 		public static void CreateAndStartLocalServer(string mapUID, IEnumerable<Order> setupOrders, Action onStart = null)
@@ -201,63 +216,16 @@ namespace OpenRA
 			Action lobbyReady = null;
 			lobbyReady = () =>
 			{
-				var uid = OrderManager.World.Map.Uid;
-				var globalSettings = OrderManager.LobbyInfo.GlobalSettings;
-				var mission = OrderManager.World.Map.Visibility == MapVisibility.MissionSelector;
-				var map = WidgetUtils.ChooseInitialMap(Settings.Server.Map);
+				LobbyInfoChanged -= lobbyReady;
+				foreach (var o in setupOrders)
+					om.IssueOrder(o);
 
-				// Disconnect from the current game
-				Ui.ResetAll();
-				Disconnect();
+				if (onStart != null)
+					onStart();
+			};
+			LobbyInfoChanged += lobbyReady;
 
-				if (replay != null)
-					JoinReplay(replayName);
-				else if (mission)
-					StartMission(uid, globalSettings.GameSpeedType, globalSettings.Difficulty);
-				else
-				{
-					JoinServer(IPAddress.Loopback.ToString(), CreateLocalServer(map), "");
-					LobbyInfoChanged += WidgetUtils.Once(() =>
-					{
-						OrderManager.IssueOrder(Order.Command("sync_lobby {0}".F(lobbyInfo.Serialize())));
-						RunAfterTick(() =>
-					   {
-						   OrderManager.IssueOrder(Order.Command("startgame"));
-					   });
-					});
-				}
-			}
-			else
-			{
-				OrderManager.World.EndGame();
-				var connection = OrderManager.Connection as NetworkConnection;
-				connection.EndRecording();
-				var om = new OrderManager(OrderManager.Host, OrderManager.Port, OrderManager.Password, connection);
-				JoinInner(om ,true);
-				connection.StartRecording(TimestampedFilename);
-				var restartready = new Order("RestartReady", null, false) { IsImmediate = true, TargetString = "" };
-				OrderManager.IssueOrder(restartready);
-			}
-		}
-
-		public static void StartMission(string mapUID, string gameSpeed, string difficulty, Action onStart = null)
-		{
-			OrderManager om = null;
-
-			Action lobbyReady = null;
-			lobbyReady = () =>
-			{
-				LobbyInfoChanged += WidgetUtils.Once(() =>
-				{
-					OrderManager.IssueOrder(Order.Command("sync_lobby {0}".F(lobbyInfo.Serialize())));
-					RunAfterTick(() =>
-					{
-						OrderManager.IssueOrder(Order.Command("startgame"));
-					});
-				});
-
-				JoinServer(IPAddress.Loopback.ToString(), CreateLocalServer(OrderManager.LobbyInfo.GlobalSettings.Map), "");
-			}
+			om = JoinServer(IPAddress.Loopback.ToString(), CreateLocalServer(mapUID), "");
 		}
 
 		public static bool IsHost

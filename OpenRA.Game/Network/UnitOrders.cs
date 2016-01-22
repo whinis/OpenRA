@@ -274,7 +274,11 @@ namespace OpenRA.Network
 
 				case "Restart":
 					Game.RestartGame();
-					break;
+					orderManager.LobbyInfo = Session.Deserialize(order.TargetString);
+					SetOrderLag(orderManager);
+					Game.SyncLobbyInfo();
+					orderManager.IssueOrder(Order.Command("state {0}".F(Session.ClientState.Ready)));
+                    break;
 
 				case "Reconnect":
 					var port = 0;

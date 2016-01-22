@@ -537,15 +537,6 @@ namespace OpenRA.Server
 				case "RequestRestart":
 					Restart();
 					break;
-				case "RestartReady":
-					var c = GetClient(conn);
-					c.State = Session.ClientState.Ready;
-					if(Conns.Where(c1 => GetClient(c1).IsReady).ToArray().Count() == Conns.Count())
-					{
-						State = ServerState.WaitingPlayers;
-						StartGame();
-					}
-                    break;
 				case "LobbyReturn":
 					LobbyReturn();
 					break;
@@ -766,12 +757,12 @@ namespace OpenRA.Server
 
 		public void Restart()
 		{
-			DispatchOrdersToClients(null, 0, new ServerOrder("Restart", "").Serialize());
-			foreach(var client in LobbyInfo.Clients)
+			foreach (var client in LobbyInfo.Clients)
 			{
-				if(client.Bot == null)
+				if (client.Bot == null)
 					client.State = Session.ClientState.NotReady;
 			}
+			DispatchOrdersToClients(null, 0, new ServerOrder("Restart", LobbyInfo.Serialize()).Serialize());
 		}
 
 		public void LobbyReturn()
